@@ -8,9 +8,20 @@ mod data_type;
 mod keyboard;
 mod providers;
 
+use std::path::PathBuf;
+
 use config::get_config;
 use keyboard::Keyboard;
 use providers::{_base::Provider, layout::LayoutProvider, media::MediaProvider, time::TimeProvider, volume::VolumeProvider};
+
+use clap::Parser;
+
+#[derive(Parser, Debug)]
+struct Args {
+    /// Path to the configuration file
+    #[arg(short, long)]
+    config: Option<PathBuf>,
+}
 
 fn main() {
     let env_filter = tracing_subscriber::EnvFilter::builder()
@@ -19,7 +30,8 @@ fn main() {
     let tracing_subscriber = tracing_subscriber::fmt().with_env_filter(env_filter).finish();
     let _ = tracing::subscriber::set_global_default(tracing_subscriber);
 
-    let config = get_config();
+    let args = Args::parse();
+    let config = get_config(args.config);
 
     let keyboard = Keyboard::new(config.device, config.reconnect_delay);
     let (connected_sender, data_sender) = keyboard.connect();

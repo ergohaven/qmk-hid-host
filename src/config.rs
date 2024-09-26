@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
@@ -15,7 +17,7 @@ pub struct Device {
     pub usage_page: u16,
 }
 
-pub fn get_config() -> Config {
+pub fn get_config(maybe_path: Option<PathBuf>) -> Config {
     let default_config = Config {
         device: Device {
             vendor_id: 0xe126,
@@ -27,17 +29,21 @@ pub fn get_config() -> Config {
         reconnect_delay: 5000,
     };
 
-    if let Ok(file) = std::fs::read_to_string("./qmk-hid-host.json") {
-        if let Ok(file_config) = serde_json::from_str::<Config>(&file) {
-            tracing::info!("Read config from file");
-            return file_config;
-        }
+    let path = maybe_path.unwrap_or("./qmk-hid-host.json".into());
 
+    if let Ok(file) = std::fs::read_to_string(&path) {
+        if let Ok(file_config) = serde_json::from_str::<Config>(&file) {
+            tracing::info!("Read config from file {}", path.to_string_lossy());
+            return file_config;
+        } else {
+            tracing::error!("Error while parsing JSON from file config file");
+        }
+    } else {
         tracing::error!("Error while reading config from file");
     }
 
     let file_content = serde_json::to_string_pretty(&default_config).unwrap();
-    std::fs::write("./qmk-hid-host.json", &file_content).unwrap();
+    std::fs::write(&path, &file_content).unwrap();
     tracing::info!("New config file created");
 
     return default_config;
